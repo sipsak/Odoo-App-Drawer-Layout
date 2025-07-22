@@ -2,7 +2,7 @@
 // @name            Odoo App Drawer Layout
 // @name:tr         Odoo Uygulama Çekmecesi Yerleşim Düzeni
 // @namespace       https://github.com/sipsak
-// @version         1.1
+// @version         1.2
 // @description     Allows you to change the number of icons that are displayed 6 side by side by default on the Odoo home screen
 // @description:tr  Odoo ana ekranında varsayılan olarak yan yana 6 tane gösterilen ikon sayısını değiştirmenize yarar
 // @author          Burak Şipşak
@@ -19,25 +19,39 @@
 (function () {
     'use strict';
 
-    const DEFAULT_ICON_COUNT = 9;
+    const DEFAULT_ICON_COUNT = 6;
+    const DEFAULT_ICON_SIZE = 70;
+    const DEFAULT_ICON_RADIUS = 0.375;
+
     const MIN_ICON_COUNT = 4;
     const MAX_ICON_COUNT = 15;
+    const MIN_ICON_SIZE = 60;
+    const MAX_ICON_SIZE = 110;
+    const MIN_ICON_RADIUS = 0.0;
+    const MAX_ICON_RADIUS = 2;
+
     const styleElementId = 'odoo-app-drawer-style';
     const sliderModalId = 'odoo-app-drawer-modal';
 
-    function getIconCount() {
-        let count = parseInt(GM_getValue('iconCount', DEFAULT_ICON_COUNT));
-        if (isNaN(count) || count < MIN_ICON_COUNT || count > MAX_ICON_COUNT) {
-            count = DEFAULT_ICON_COUNT;
-        }
-        return count;
+    function getSetting(key, fallback) {
+        let value = GM_getValue(key, fallback);
+        if (typeof fallback === 'number') value = parseFloat(value);
+        return isNaN(value) ? fallback : value;
     }
 
-    function applyPreviewStyles(iconCount) {
+    function applyPreviewStyles(iconCount, iconSize, iconRadius) {
         let style = document.getElementById(styleElementId);
         const widthPercent = (100 / iconCount).toFixed(8) + '%';
         const spacingCount = iconCount - 1;
-        const maxWidthPx = iconCount * 75 + spacingCount * 80;
+
+        // 1. adım: Temel max-width hesabı (icon count'a göre)
+        const baseMaxWidthPx = iconCount * 75 + spacingCount * 80;
+
+        // 2. adım: Simge boyutu ayarlaması (70px sıfır noktası)
+        const sizeAdjustment = (iconSize - DEFAULT_ICON_SIZE) * 8;
+
+        // Final max-width değeri
+        const maxWidthPx = baseMaxWidthPx + sizeAdjustment;
 
         const css = `
             @media (min-width: 768px) {
@@ -54,8 +68,6 @@
                 .o_home_menu .col-xl-2,
                 .o_home_menu .col-xxl-2 {
                     width: ${widthPercent} !important;
-                    -webkit-box-flex: 0 !important;
-                    -webkit-flex: 0 0 auto !important;
                     flex: 0 0 auto !important;
                 }
 
@@ -72,6 +84,11 @@
                 .o_home_menu .o_container_small {
                     max-width: ${maxWidthPx}px !important;
                 }
+
+                .o_home_menu .o_app .o_app_icon {
+                    width: ${iconSize}px !important;
+                    border-radius: ${iconRadius}rem !important;
+                }
             }
         `;
 
@@ -86,14 +103,48 @@
     }
 
     function applyCustomStyles() {
-        applyPreviewStyles(getIconCount());
+        applyPreviewStyles(
+            getSetting('iconCount', DEFAULT_ICON_COUNT),
+            getSetting('iconSize', DEFAULT_ICON_SIZE),
+            getSetting('iconRadius', DEFAULT_ICON_RADIUS)
+        );
+    }
+
+    function createSlider(id, label, min, max, current, step = 1, unit = '', decimalPlaces = 0, defaultValue) {
+        const valueFormatted = decimalPlaces === 0
+            ? current
+            : parseFloat(current).toFixed(decimalPlaces);
+
+        return `
+            <div class="mb-3">
+                <label for="${id}" class="form-label d-flex justify-content-between align-items-center">
+                    <span>${label}: <strong id="${id}Value">${valueFormatted}${unit}</strong></span>
+                    <button type="button" class="btn btn-sm btn-light px-2 py-0" data-reset="${id}" title="Varsayılana sıfırla">
+                        &#x21bb;
+                    </button>
+                </label>
+                <input type="range"
+                       class="form-range"
+                       id="${id}"
+                       min="${min}"
+                       max="${max}"
+                       step="${step}"
+                       value="${current}">
+                <div class="d-flex justify-content-between text-muted small mt-1">
+                    <span>${min}${unit}</span>
+                    <span>${max}${unit}</span>
+                </div>
+            </div>
+        `;
     }
 
     function createSliderModal() {
         const oldModal = document.getElementById(sliderModalId);
         if (oldModal) oldModal.remove();
 
-        const currentValue = getIconCount();
+        const currentIconCount = getSetting('iconCount', DEFAULT_ICON_COUNT);
+        const currentIconSize = getSetting('iconSize', DEFAULT_ICON_SIZE);
+        const currentIconRadius = getSetting('iconRadius', DEFAULT_ICON_RADIUS);
 
         const modalWrapper = document.createElement('div');
         modalWrapper.id = sliderModalId;
@@ -109,29 +160,20 @@
         `;
 
         modalWrapper.innerHTML = `
-            <div class="modal-dialog modal-dialog-centered" style="max-width: 350px;">
+            <div class="modal-dialog modal-dialog-centered" style="max-width: 400px;">
                 <div class="modal-content">
                     <header class="modal-header">
-                        <h4 class="modal-title text-break">Sıra Sayısını Ayarla</h4>
+                        <h4 class="modal-title text-break">Görünüm Ayarları</h4>
                         <button type="button" class="btn-close" aria-label="Close"></button>
                     </header>
                     <main class="modal-body">
-                        <label for="iconCountSlider" class="form-label">
-                            Yan yana gösterilecek simge sayısı: <strong id="sliderValue">${currentValue}</strong>
-                        </label>
-                        <input type="range"
-                               class="form-range"
-                               id="iconCountSlider"
-                               min="${MIN_ICON_COUNT}"
-                               max="${MAX_ICON_COUNT}"
-                               value="${currentValue}">
-                        <div class="d-flex justify-content-between text-muted small mt-1">
-                            <span>${MIN_ICON_COUNT}</span>
-                            <span>${MAX_ICON_COUNT}</span>
-                        </div>
+                        ${createSlider('iconCountSlider', 'Yan yana simge sayısı', MIN_ICON_COUNT, MAX_ICON_COUNT, currentIconCount, 1, '', 0, DEFAULT_ICON_COUNT)}
+                        ${createSlider('iconSizeSlider', 'Simge boyutu', MIN_ICON_SIZE, MAX_ICON_SIZE, currentIconSize, 1, 'px', 0, DEFAULT_ICON_SIZE)}
+                        ${createSlider('iconRadiusSlider', 'Köşe yuvarlatma', MIN_ICON_RADIUS, MAX_ICON_RADIUS, currentIconRadius, 0.005, 'rem', 3, DEFAULT_ICON_RADIUS)}
                     </main>
                     <footer class="modal-footer justify-content-start">
                         <button id="sliderOkBtn" class="btn btn-primary me-2">Tamam</button>
+                        <button id="sliderResetAllBtn" class="btn btn-info me-2">Tümünü sıfırla</button>
                         <button id="sliderCancelBtn" class="btn btn-secondary">İptal</button>
                     </footer>
                 </div>
@@ -141,16 +183,65 @@
         document.body.appendChild(modalWrapper);
 
         const modal = document.getElementById(sliderModalId);
-        const slider = document.getElementById('iconCountSlider');
-        const valueDisplay = document.getElementById('sliderValue');
-        const okBtn = document.getElementById('sliderOkBtn');
-        const cancelBtn = document.getElementById('sliderCancelBtn');
-        const closeBtn = modal.querySelector('.btn-close');
+        const sliders = {
+            iconCount: document.getElementById('iconCountSlider'),
+            iconSize: document.getElementById('iconSizeSlider'),
+            iconRadius: document.getElementById('iconRadiusSlider')
+        };
+        const labels = {
+            iconCount: document.getElementById('iconCountSliderValue'),
+            iconSize: document.getElementById('iconSizeSliderValue'),
+            iconRadius: document.getElementById('iconRadiusSliderValue')
+        };
 
-        slider.addEventListener('input', function () {
-            valueDisplay.textContent = this.value;
-            applyPreviewStyles(parseInt(this.value));
+        function updatePreview() {
+            labels.iconCount.textContent = sliders.iconCount.value;
+            labels.iconSize.textContent = sliders.iconSize.value + 'px';
+            labels.iconRadius.textContent = parseFloat(sliders.iconRadius.value).toFixed(3) + 'rem';
+
+            applyPreviewStyles(
+                parseInt(sliders.iconCount.value),
+                parseInt(sliders.iconSize.value),
+                parseFloat(sliders.iconRadius.value)
+            );
+        }
+
+        Object.values(sliders).forEach(slider => {
+            slider.addEventListener('input', updatePreview);
         });
+
+        modal.querySelectorAll('[data-reset]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const id = btn.getAttribute('data-reset');
+                const slider = document.getElementById(id);
+                if (id === 'iconCountSlider') slider.value = DEFAULT_ICON_COUNT;
+                if (id === 'iconSizeSlider') slider.value = DEFAULT_ICON_SIZE;
+                if (id === 'iconRadiusSlider') slider.value = DEFAULT_ICON_RADIUS;
+                updatePreview();
+            });
+        });
+
+        function resetAllSliders() {
+            sliders.iconCount.value = DEFAULT_ICON_COUNT;
+            sliders.iconSize.value = DEFAULT_ICON_SIZE;
+            sliders.iconRadius.value = DEFAULT_ICON_RADIUS;
+            updatePreview();
+        }
+
+        document.getElementById('sliderResetAllBtn').addEventListener('click', resetAllSliders);
+
+        document.getElementById('sliderOkBtn').addEventListener('click', () => {
+            GM_setValue('iconCount', parseInt(sliders.iconCount.value));
+            GM_setValue('iconSize', parseInt(sliders.iconSize.value));
+            GM_setValue('iconRadius', parseFloat(sliders.iconRadius.value));
+            applyCustomStyles();
+            modal.remove();
+            document.removeEventListener('keydown', escHandler);
+        });
+
+        document.getElementById('sliderCancelBtn').addEventListener('click', closeModal);
+        modal.querySelector('.btn-close').addEventListener('click', closeModal);
+        modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
 
         function closeModal() {
             applyCustomStyles();
@@ -158,30 +249,12 @@
             document.removeEventListener('keydown', escHandler);
         }
 
-        okBtn.addEventListener('click', function () {
-            const newValue = parseInt(slider.value);
-            GM_setValue('iconCount', newValue);
-            applyCustomStyles();
-            modal.remove();
-            document.removeEventListener('keydown', escHandler);
-        });
-
-        cancelBtn.addEventListener('click', closeModal);
-        closeBtn.addEventListener('click', closeModal);
-
-        modal.addEventListener('click', function (e) {
-            if (e.target === modal) {
-                closeModal();
-            }
-        });
-
         function escHandler(e) {
-            if (e.key === 'Escape') {
-                closeModal();
-            }
+            if (e.key === 'Escape') closeModal();
         }
 
         document.addEventListener('keydown', escHandler);
+        updatePreview();
     }
 
     function showSliderModal() {
