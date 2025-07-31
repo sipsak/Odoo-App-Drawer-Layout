@@ -2,9 +2,9 @@
 // @name            Odoo App Drawer Layout
 // @name:tr         Odoo Uygulama Çekmecesi Yerleşim Düzeni
 // @namespace       https://github.com/sipsak
-// @version         1.2
-// @description     Allows you to change the number of icons that are displayed 6 side by side by default on the Odoo home screen
-// @description:tr  Odoo ana ekranında varsayılan olarak yan yana 6 tane gösterilen ikon sayısını değiştirmenize yarar
+// @version         1.3
+// @description     Allows you to customize the layout of icons on the Odoo home screen
+// @description:tr  Odoo ana ekrandaki simgelerin düzenini değiştirmenizi sağlar.
 // @author          Burak Şipşak
 // @match           https://portal.bskhvac.com.tr/*
 // @match           https://*.odoo.com/*
@@ -22,13 +22,16 @@
     const DEFAULT_ICON_COUNT = 6;
     const DEFAULT_ICON_SIZE = 70;
     const DEFAULT_ICON_RADIUS = 0.375;
+    const DEFAULT_TOP_MARGIN = 48;
 
     const MIN_ICON_COUNT = 4;
     const MAX_ICON_COUNT = 15;
     const MIN_ICON_SIZE = 60;
-    const MAX_ICON_SIZE = 110;
+    const MAX_ICON_SIZE = 112;
     const MIN_ICON_RADIUS = 0.0;
-    const MAX_ICON_RADIUS = 2;
+    const MAX_ICON_RADIUS = 3.5;
+    const MIN_TOP_MARGIN = 0;
+    const MAX_TOP_MARGIN = 96;
 
     const styleElementId = 'odoo-app-drawer-style';
     const sliderModalId = 'odoo-app-drawer-modal';
@@ -39,18 +42,15 @@
         return isNaN(value) ? fallback : value;
     }
 
-    function applyPreviewStyles(iconCount, iconSize, iconRadius) {
+    function applyPreviewStyles(iconCount, iconSize, iconRadius, topMargin) {
         let style = document.getElementById(styleElementId);
         const widthPercent = (100 / iconCount).toFixed(8) + '%';
         const spacingCount = iconCount - 1;
 
-        // 1. adım: Temel max-width hesabı (icon count'a göre)
         const baseMaxWidthPx = iconCount * 75 + spacingCount * 80;
 
-        // 2. adım: Simge boyutu ayarlaması (70px sıfır noktası)
         const sizeAdjustment = (iconSize - DEFAULT_ICON_SIZE) * 8;
 
-        // Final max-width değeri
         const maxWidthPx = baseMaxWidthPx + sizeAdjustment;
 
         const css = `
@@ -90,6 +90,10 @@
                     border-radius: ${iconRadius}rem !important;
                 }
             }
+
+            .mt-5 {
+                margin-top: ${topMargin}px !important;
+            }
         `;
 
         if (style) {
@@ -106,7 +110,8 @@
         applyPreviewStyles(
             getSetting('iconCount', DEFAULT_ICON_COUNT),
             getSetting('iconSize', DEFAULT_ICON_SIZE),
-            getSetting('iconRadius', DEFAULT_ICON_RADIUS)
+            getSetting('iconRadius', DEFAULT_ICON_RADIUS),
+            getSetting('topMargin', DEFAULT_TOP_MARGIN)
         );
     }
 
@@ -145,6 +150,7 @@
         const currentIconCount = getSetting('iconCount', DEFAULT_ICON_COUNT);
         const currentIconSize = getSetting('iconSize', DEFAULT_ICON_SIZE);
         const currentIconRadius = getSetting('iconRadius', DEFAULT_ICON_RADIUS);
+        const currentTopMargin = getSetting('topMargin', DEFAULT_TOP_MARGIN);
 
         const modalWrapper = document.createElement('div');
         modalWrapper.id = sliderModalId;
@@ -167,9 +173,10 @@
                         <button type="button" class="btn-close" aria-label="Close"></button>
                     </header>
                     <main class="modal-body">
-                        ${createSlider('iconCountSlider', 'Yan yana simge sayısı', MIN_ICON_COUNT, MAX_ICON_COUNT, currentIconCount, 1, '', 0, DEFAULT_ICON_COUNT)}
+                        ${createSlider('iconCountSlider', 'Sütun sayısı', MIN_ICON_COUNT, MAX_ICON_COUNT, currentIconCount, 1, '', 0, DEFAULT_ICON_COUNT)}
                         ${createSlider('iconSizeSlider', 'Simge boyutu', MIN_ICON_SIZE, MAX_ICON_SIZE, currentIconSize, 1, 'px', 0, DEFAULT_ICON_SIZE)}
                         ${createSlider('iconRadiusSlider', 'Köşe yuvarlatma', MIN_ICON_RADIUS, MAX_ICON_RADIUS, currentIconRadius, 0.005, 'rem', 3, DEFAULT_ICON_RADIUS)}
+                        ${createSlider('topMarginSlider', 'Üst boşluk', MIN_TOP_MARGIN, MAX_TOP_MARGIN, currentTopMargin, 1, 'px', 0, DEFAULT_TOP_MARGIN)}
                     </main>
                     <footer class="modal-footer justify-content-start">
                         <button id="sliderOkBtn" class="btn btn-primary me-2">Tamam</button>
@@ -186,23 +193,27 @@
         const sliders = {
             iconCount: document.getElementById('iconCountSlider'),
             iconSize: document.getElementById('iconSizeSlider'),
-            iconRadius: document.getElementById('iconRadiusSlider')
+            iconRadius: document.getElementById('iconRadiusSlider'),
+            topMargin: document.getElementById('topMarginSlider')
         };
         const labels = {
             iconCount: document.getElementById('iconCountSliderValue'),
             iconSize: document.getElementById('iconSizeSliderValue'),
-            iconRadius: document.getElementById('iconRadiusSliderValue')
+            iconRadius: document.getElementById('iconRadiusSliderValue'),
+            topMargin: document.getElementById('topMarginSliderValue')
         };
 
         function updatePreview() {
             labels.iconCount.textContent = sliders.iconCount.value;
             labels.iconSize.textContent = sliders.iconSize.value + 'px';
             labels.iconRadius.textContent = parseFloat(sliders.iconRadius.value).toFixed(3) + 'rem';
+            labels.topMargin.textContent = sliders.topMargin.value + 'px';
 
             applyPreviewStyles(
                 parseInt(sliders.iconCount.value),
                 parseInt(sliders.iconSize.value),
-                parseFloat(sliders.iconRadius.value)
+                parseFloat(sliders.iconRadius.value),
+                parseInt(sliders.topMargin.value)
             );
         }
 
@@ -217,6 +228,7 @@
                 if (id === 'iconCountSlider') slider.value = DEFAULT_ICON_COUNT;
                 if (id === 'iconSizeSlider') slider.value = DEFAULT_ICON_SIZE;
                 if (id === 'iconRadiusSlider') slider.value = DEFAULT_ICON_RADIUS;
+                if (id === 'topMarginSlider') slider.value = DEFAULT_TOP_MARGIN;
                 updatePreview();
             });
         });
@@ -225,6 +237,7 @@
             sliders.iconCount.value = DEFAULT_ICON_COUNT;
             sliders.iconSize.value = DEFAULT_ICON_SIZE;
             sliders.iconRadius.value = DEFAULT_ICON_RADIUS;
+            sliders.topMargin.value = DEFAULT_TOP_MARGIN;
             updatePreview();
         }
 
@@ -234,6 +247,7 @@
             GM_setValue('iconCount', parseInt(sliders.iconCount.value));
             GM_setValue('iconSize', parseInt(sliders.iconSize.value));
             GM_setValue('iconRadius', parseFloat(sliders.iconRadius.value));
+            GM_setValue('topMargin', parseInt(sliders.topMargin.value));
             applyCustomStyles();
             modal.remove();
             document.removeEventListener('keydown', escHandler);
