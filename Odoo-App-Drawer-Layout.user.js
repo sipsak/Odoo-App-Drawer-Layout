@@ -2,9 +2,9 @@
 // @name            Odoo App Drawer Layout
 // @name:tr         Odoo Uygulama Çekmecesi Yerleşim Düzeni
 // @namespace       https://github.com/sipsak
-// @version         1.3
+// @version         1.4
 // @description     Allows you to customize the layout of icons on the Odoo home screen
-// @description:tr  Odoo ana ekrandaki simgelerin düzenini değiştirmenizi sağlar.
+// @description:tr  Odoo ana ekrandaki simgelerin düzenini değiştirmenizi sağlar
 // @author          Burak Şipşak
 // @match           https://portal.bskhvac.com.tr/*
 // @match           https://*.odoo.com/*
@@ -23,6 +23,8 @@
     const DEFAULT_ICON_SIZE = 70;
     const DEFAULT_ICON_RADIUS = 0.375;
     const DEFAULT_TOP_MARGIN = 48;
+    const DEFAULT_ICON_SPACING = 10;
+    const DEFAULT_FIT_TO_SCREEN_WIDTH = false;
 
     const MIN_ICON_COUNT = 4;
     const MAX_ICON_COUNT = 15;
@@ -32,26 +34,36 @@
     const MAX_ICON_RADIUS = 3.5;
     const MIN_TOP_MARGIN = 0;
     const MAX_TOP_MARGIN = 96;
+    const MIN_ICON_SPACING = 5;
+    const MAX_ICON_SPACING = 20;
 
     const styleElementId = 'odoo-app-drawer-style';
     const sliderModalId = 'odoo-app-drawer-modal';
 
     function getSetting(key, fallback) {
         let value = GM_getValue(key, fallback);
-        if (typeof fallback === 'number') value = parseFloat(value);
-        return isNaN(value) ? fallback : value;
+        if (typeof fallback === 'number' && !isNaN(parseFloat(value))) {
+            value = parseFloat(value);
+        } else if (typeof fallback === 'boolean') {
+            value = (value === 'true' || value === true);
+        }
+        return isNaN(value) && typeof fallback === 'number' ? fallback : value;
     }
 
-    function applyPreviewStyles(iconCount, iconSize, iconRadius, topMargin) {
+    function applyPreviewStyles(iconCount, iconSize, iconRadius, topMargin, iconSpacing, fitToScreenWidth) {
         let style = document.getElementById(styleElementId);
         const widthPercent = (100 / iconCount).toFixed(8) + '%';
-        const spacingCount = iconCount - 1;
 
-        const baseMaxWidthPx = iconCount * 75 + spacingCount * 80;
-
-        const sizeAdjustment = (iconSize - DEFAULT_ICON_SIZE) * 8;
-
-        const maxWidthPx = baseMaxWidthPx + sizeAdjustment;
+        let maxWidthCss = '';
+        if (fitToScreenWidth) {
+            maxWidthCss = `max-width: ${window.innerWidth - 40}px !important;`;
+        } else {
+            const spacingCount = iconCount - 1;
+            const baseMaxWidthPx = iconCount * 75 + spacingCount * 80;
+            const sizeAdjustment = (iconSize - DEFAULT_ICON_SIZE) * 8;
+            const maxWidthPx = baseMaxWidthPx + sizeAdjustment;
+            maxWidthCss = `max-width: ${maxWidthPx}px !important;`;
+        }
 
         const css = `
             @media (min-width: 768px) {
@@ -82,12 +94,13 @@
 
                 .o_home_menu .container,
                 .o_home_menu .o_container_small {
-                    max-width: ${maxWidthPx}px !important;
+                    ${maxWidthCss}
                 }
 
                 .o_home_menu .o_app .o_app_icon {
                     width: ${iconSize}px !important;
                     border-radius: ${iconRadius}rem !important;
+                    padding: ${iconSpacing}px !important;
                 }
             }
 
@@ -111,7 +124,9 @@
             getSetting('iconCount', DEFAULT_ICON_COUNT),
             getSetting('iconSize', DEFAULT_ICON_SIZE),
             getSetting('iconRadius', DEFAULT_ICON_RADIUS),
-            getSetting('topMargin', DEFAULT_TOP_MARGIN)
+            getSetting('topMargin', DEFAULT_TOP_MARGIN),
+            getSetting('iconSpacing', DEFAULT_ICON_SPACING),
+            getSetting('fitToScreenWidth', DEFAULT_FIT_TO_SCREEN_WIDTH)
         );
     }
 
@@ -124,7 +139,7 @@
             <div class="mb-3">
                 <label for="${id}" class="form-label d-flex justify-content-between align-items-center">
                     <span>${label}: <strong id="${id}Value">${valueFormatted}${unit}</strong></span>
-                    <button type="button" class="btn btn-sm btn-light px-2 py-0" data-reset="${id}" title="Varsayılana sıfırla">
+                    <button type="button" class="btn btn-sm btn-light px-2 py-0" data-reset="${id}" data-default="${defaultValue}" title="Varsayılana sıfırla">
                         &#x21bb;
                     </button>
                 </label>
@@ -151,6 +166,8 @@
         const currentIconSize = getSetting('iconSize', DEFAULT_ICON_SIZE);
         const currentIconRadius = getSetting('iconRadius', DEFAULT_ICON_RADIUS);
         const currentTopMargin = getSetting('topMargin', DEFAULT_TOP_MARGIN);
+        const currentIconSpacing = getSetting('iconSpacing', DEFAULT_ICON_SPACING);
+        const currentFitToScreenWidth = getSetting('fitToScreenWidth', DEFAULT_FIT_TO_SCREEN_WIDTH);
 
         const modalWrapper = document.createElement('div');
         modalWrapper.id = sliderModalId;
@@ -175,8 +192,16 @@
                     <main class="modal-body">
                         ${createSlider('iconCountSlider', 'Sütun sayısı', MIN_ICON_COUNT, MAX_ICON_COUNT, currentIconCount, 1, '', 0, DEFAULT_ICON_COUNT)}
                         ${createSlider('iconSizeSlider', 'Simge boyutu', MIN_ICON_SIZE, MAX_ICON_SIZE, currentIconSize, 1, 'px', 0, DEFAULT_ICON_SIZE)}
+                        ${createSlider('iconSpacingSlider', 'Simge boşluğu', MIN_ICON_SPACING, MAX_ICON_SPACING, currentIconSpacing, 1, 'px', 0, DEFAULT_ICON_SPACING)}
                         ${createSlider('iconRadiusSlider', 'Köşe yuvarlatma', MIN_ICON_RADIUS, MAX_ICON_RADIUS, currentIconRadius, 0.005, 'rem', 3, DEFAULT_ICON_RADIUS)}
                         ${createSlider('topMarginSlider', 'Üst boşluk', MIN_TOP_MARGIN, MAX_TOP_MARGIN, currentTopMargin, 1, 'px', 0, DEFAULT_TOP_MARGIN)}
+
+                        <div class="form-check mt-3">
+                            <input class="form-check-input" type="checkbox" id="fitToScreenWidthCheckbox" ${currentFitToScreenWidth ? 'checked' : ''}>
+                            <label class="form-check-label" for="fitToScreenWidthCheckbox">
+                                Ekran genişliğine sığdır
+                            </label>
+                        </div>
                     </main>
                     <footer class="modal-footer justify-content-start">
                         <button id="sliderOkBtn" class="btn btn-primary me-2">Tamam</button>
@@ -193,19 +218,23 @@
         const sliders = {
             iconCount: document.getElementById('iconCountSlider'),
             iconSize: document.getElementById('iconSizeSlider'),
+            iconSpacing: document.getElementById('iconSpacingSlider'),
             iconRadius: document.getElementById('iconRadiusSlider'),
             topMargin: document.getElementById('topMarginSlider')
         };
         const labels = {
             iconCount: document.getElementById('iconCountSliderValue'),
             iconSize: document.getElementById('iconSizeSliderValue'),
+            iconSpacing: document.getElementById('iconSpacingSliderValue'),
             iconRadius: document.getElementById('iconRadiusSliderValue'),
             topMargin: document.getElementById('topMarginSliderValue')
         };
+        const fitToScreenWidthCheckbox = document.getElementById('fitToScreenWidthCheckbox');
 
         function updatePreview() {
             labels.iconCount.textContent = sliders.iconCount.value;
             labels.iconSize.textContent = sliders.iconSize.value + 'px';
+            labels.iconSpacing.textContent = sliders.iconSpacing.value + 'px';
             labels.iconRadius.textContent = parseFloat(sliders.iconRadius.value).toFixed(3) + 'rem';
             labels.topMargin.textContent = sliders.topMargin.value + 'px';
 
@@ -213,7 +242,9 @@
                 parseInt(sliders.iconCount.value),
                 parseInt(sliders.iconSize.value),
                 parseFloat(sliders.iconRadius.value),
-                parseInt(sliders.topMargin.value)
+                parseInt(sliders.topMargin.value),
+                parseInt(sliders.iconSpacing.value),
+                fitToScreenWidthCheckbox.checked
             );
         }
 
@@ -221,14 +252,14 @@
             slider.addEventListener('input', updatePreview);
         });
 
+        fitToScreenWidthCheckbox.addEventListener('change', updatePreview);
+
         modal.querySelectorAll('[data-reset]').forEach(btn => {
             btn.addEventListener('click', () => {
                 const id = btn.getAttribute('data-reset');
+                const defaultValue = btn.getAttribute('data-default');
                 const slider = document.getElementById(id);
-                if (id === 'iconCountSlider') slider.value = DEFAULT_ICON_COUNT;
-                if (id === 'iconSizeSlider') slider.value = DEFAULT_ICON_SIZE;
-                if (id === 'iconRadiusSlider') slider.value = DEFAULT_ICON_RADIUS;
-                if (id === 'topMarginSlider') slider.value = DEFAULT_TOP_MARGIN;
+                slider.value = defaultValue;
                 updatePreview();
             });
         });
@@ -236,8 +267,10 @@
         function resetAllSliders() {
             sliders.iconCount.value = DEFAULT_ICON_COUNT;
             sliders.iconSize.value = DEFAULT_ICON_SIZE;
+            sliders.iconSpacing.value = DEFAULT_ICON_SPACING;
             sliders.iconRadius.value = DEFAULT_ICON_RADIUS;
             sliders.topMargin.value = DEFAULT_TOP_MARGIN;
+            fitToScreenWidthCheckbox.checked = DEFAULT_FIT_TO_SCREEN_WIDTH;
             updatePreview();
         }
 
@@ -246,11 +279,15 @@
         document.getElementById('sliderOkBtn').addEventListener('click', () => {
             GM_setValue('iconCount', parseInt(sliders.iconCount.value));
             GM_setValue('iconSize', parseInt(sliders.iconSize.value));
+            GM_setValue('iconSpacing', parseInt(sliders.iconSpacing.value));
             GM_setValue('iconRadius', parseFloat(sliders.iconRadius.value));
             GM_setValue('topMargin', parseInt(sliders.topMargin.value));
+            GM_setValue('fitToScreenWidth', fitToScreenWidthCheckbox.checked);
+
             applyCustomStyles();
             modal.remove();
             document.removeEventListener('keydown', escHandler);
+            window.removeEventListener('resize', applyCustomStyles);
         });
 
         document.getElementById('sliderCancelBtn').addEventListener('click', closeModal);
@@ -261,6 +298,7 @@
             applyCustomStyles();
             modal.remove();
             document.removeEventListener('keydown', escHandler);
+            window.removeEventListener('resize', applyCustomStyles);
         }
 
         function escHandler(e) {
@@ -268,6 +306,7 @@
         }
 
         document.addEventListener('keydown', escHandler);
+        window.addEventListener('resize', updatePreview);
         updatePreview();
     }
 
@@ -275,11 +314,15 @@
         createSliderModal();
     }
 
-    GM_registerMenuCommand("Sıra sayısını ayarla", showSliderModal);
+    GM_registerMenuCommand("Görünüm Ayarları", showSliderModal);
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', applyCustomStyles);
+        document.addEventListener('DOMContentLoaded', () => {
+            applyCustomStyles();
+            window.addEventListener('resize', applyCustomStyles);
+        });
     } else {
         applyCustomStyles();
+        window.addEventListener('resize', applyCustomStyles);
     }
 })();
