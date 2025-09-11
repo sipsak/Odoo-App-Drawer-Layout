@@ -2,7 +2,7 @@
 // @name            Odoo App Drawer Layout
 // @name:tr         Odoo Uygulama Çekmecesi Yerleşim Düzeni
 // @namespace       https://github.com/sipsak
-// @version         1.4
+// @version         1.5
 // @description     Allows you to customize the layout of icons on the Odoo home screen
 // @description:tr  Odoo ana ekrandaki simgelerin düzenini değiştirmenizi sağlar
 // @author          Burak Şipşak
@@ -21,21 +21,24 @@
 
     const DEFAULT_ICON_COUNT = 6;
     const DEFAULT_ICON_SIZE = 70;
-    const DEFAULT_ICON_RADIUS = 0.375;
+    const DEFAULT_ICON_RADIUS = (6 / 35) * 100;
     const DEFAULT_TOP_MARGIN = 48;
     const DEFAULT_ICON_SPACING = 10;
+    const DEFAULT_ICON_MARGIN = 16;
     const DEFAULT_FIT_TO_SCREEN_WIDTH = false;
 
     const MIN_ICON_COUNT = 4;
     const MAX_ICON_COUNT = 15;
     const MIN_ICON_SIZE = 60;
-    const MAX_ICON_SIZE = 112;
-    const MIN_ICON_RADIUS = 0.0;
-    const MAX_ICON_RADIUS = 3.5;
+    const MAX_ICON_SIZE = 128;
+    const MIN_ICON_RADIUS = 0;
+    const MAX_ICON_RADIUS = 100;
     const MIN_TOP_MARGIN = 0;
     const MAX_TOP_MARGIN = 96;
     const MIN_ICON_SPACING = 5;
     const MAX_ICON_SPACING = 20;
+    const MIN_ICON_MARGIN = 0;
+    const MAX_ICON_MARGIN = 64;
 
     const styleElementId = 'odoo-app-drawer-style';
     const sliderModalId = 'odoo-app-drawer-modal';
@@ -50,9 +53,10 @@
         return isNaN(value) && typeof fallback === 'number' ? fallback : value;
     }
 
-    function applyPreviewStyles(iconCount, iconSize, iconRadius, topMargin, iconSpacing, fitToScreenWidth) {
+    function applyPreviewStyles(iconCount, iconSize, iconRadius, topMargin, iconSpacing, fitToScreenWidth, iconMargin) {
         let style = document.getElementById(styleElementId);
         const widthPercent = (100 / iconCount).toFixed(8) + '%';
+        const borderRadiusInPx = (iconSize / 2) * (iconRadius / 100);
 
         let maxWidthCss = '';
         if (fitToScreenWidth) {
@@ -99,8 +103,12 @@
 
                 .o_home_menu .o_app .o_app_icon {
                     width: ${iconSize}px !important;
-                    border-radius: ${iconRadius}rem !important;
+                    height: ${iconSize}px !important;
+                    border-radius: ${borderRadiusInPx}px !important;
                     padding: ${iconSpacing}px !important;
+                }
+                .o_home_menu .mb-3 {
+                    margin-bottom: ${iconMargin}px !important;
                 }
             }
 
@@ -126,7 +134,8 @@
             getSetting('iconRadius', DEFAULT_ICON_RADIUS),
             getSetting('topMargin', DEFAULT_TOP_MARGIN),
             getSetting('iconSpacing', DEFAULT_ICON_SPACING),
-            getSetting('fitToScreenWidth', DEFAULT_FIT_TO_SCREEN_WIDTH)
+            getSetting('fitToScreenWidth', DEFAULT_FIT_TO_SCREEN_WIDTH),
+            getSetting('iconMargin', DEFAULT_ICON_MARGIN)
         );
     }
 
@@ -167,6 +176,7 @@
         const currentIconRadius = getSetting('iconRadius', DEFAULT_ICON_RADIUS);
         const currentTopMargin = getSetting('topMargin', DEFAULT_TOP_MARGIN);
         const currentIconSpacing = getSetting('iconSpacing', DEFAULT_ICON_SPACING);
+        const currentIconMargin = getSetting('iconMargin', DEFAULT_ICON_MARGIN);
         const currentFitToScreenWidth = getSetting('fitToScreenWidth', DEFAULT_FIT_TO_SCREEN_WIDTH);
 
         const modalWrapper = document.createElement('div');
@@ -192,8 +202,9 @@
                     <main class="modal-body">
                         ${createSlider('iconCountSlider', 'Sütun sayısı', MIN_ICON_COUNT, MAX_ICON_COUNT, currentIconCount, 1, '', 0, DEFAULT_ICON_COUNT)}
                         ${createSlider('iconSizeSlider', 'Simge boyutu', MIN_ICON_SIZE, MAX_ICON_SIZE, currentIconSize, 1, 'px', 0, DEFAULT_ICON_SIZE)}
-                        ${createSlider('iconSpacingSlider', 'Simge boşluğu', MIN_ICON_SPACING, MAX_ICON_SPACING, currentIconSpacing, 1, 'px', 0, DEFAULT_ICON_SPACING)}
-                        ${createSlider('iconRadiusSlider', 'Köşe yuvarlatma', MIN_ICON_RADIUS, MAX_ICON_RADIUS, currentIconRadius, 0.005, 'rem', 3, DEFAULT_ICON_RADIUS)}
+                        ${createSlider('iconSpacingSlider', 'Simge içi boşluk', MIN_ICON_SPACING, MAX_ICON_SPACING, currentIconSpacing, 1, 'px', 0, DEFAULT_ICON_SPACING)}
+                        ${createSlider('iconMarginSlider', 'Simgeler arası boşluk', MIN_ICON_MARGIN, MAX_ICON_MARGIN, currentIconMargin, 1, 'px', 0, DEFAULT_ICON_MARGIN)}
+                        ${createSlider('iconRadiusSlider', 'Köşe yuvarlatma', MIN_ICON_RADIUS, MAX_ICON_RADIUS, currentIconRadius, 1, '%', 0, DEFAULT_ICON_RADIUS)}
                         ${createSlider('topMarginSlider', 'Üst boşluk', MIN_TOP_MARGIN, MAX_TOP_MARGIN, currentTopMargin, 1, 'px', 0, DEFAULT_TOP_MARGIN)}
 
                         <div class="form-check mt-3">
@@ -219,6 +230,7 @@
             iconCount: document.getElementById('iconCountSlider'),
             iconSize: document.getElementById('iconSizeSlider'),
             iconSpacing: document.getElementById('iconSpacingSlider'),
+            iconMargin: document.getElementById('iconMarginSlider'),
             iconRadius: document.getElementById('iconRadiusSlider'),
             topMargin: document.getElementById('topMarginSlider')
         };
@@ -226,6 +238,7 @@
             iconCount: document.getElementById('iconCountSliderValue'),
             iconSize: document.getElementById('iconSizeSliderValue'),
             iconSpacing: document.getElementById('iconSpacingSliderValue'),
+            iconMargin: document.getElementById('iconMarginSliderValue'),
             iconRadius: document.getElementById('iconRadiusSliderValue'),
             topMargin: document.getElementById('topMarginSliderValue')
         };
@@ -235,7 +248,8 @@
             labels.iconCount.textContent = sliders.iconCount.value;
             labels.iconSize.textContent = sliders.iconSize.value + 'px';
             labels.iconSpacing.textContent = sliders.iconSpacing.value + 'px';
-            labels.iconRadius.textContent = parseFloat(sliders.iconRadius.value).toFixed(3) + 'rem';
+            labels.iconMargin.textContent = sliders.iconMargin.value + 'px';
+            labels.iconRadius.textContent = sliders.iconRadius.value + '%';
             labels.topMargin.textContent = sliders.topMargin.value + 'px';
 
             applyPreviewStyles(
@@ -244,7 +258,8 @@
                 parseFloat(sliders.iconRadius.value),
                 parseInt(sliders.topMargin.value),
                 parseInt(sliders.iconSpacing.value),
-                fitToScreenWidthCheckbox.checked
+                fitToScreenWidthCheckbox.checked,
+                parseInt(sliders.iconMargin.value)
             );
         }
 
@@ -268,6 +283,7 @@
             sliders.iconCount.value = DEFAULT_ICON_COUNT;
             sliders.iconSize.value = DEFAULT_ICON_SIZE;
             sliders.iconSpacing.value = DEFAULT_ICON_SPACING;
+            sliders.iconMargin.value = DEFAULT_ICON_MARGIN;
             sliders.iconRadius.value = DEFAULT_ICON_RADIUS;
             sliders.topMargin.value = DEFAULT_TOP_MARGIN;
             fitToScreenWidthCheckbox.checked = DEFAULT_FIT_TO_SCREEN_WIDTH;
@@ -280,6 +296,7 @@
             GM_setValue('iconCount', parseInt(sliders.iconCount.value));
             GM_setValue('iconSize', parseInt(sliders.iconSize.value));
             GM_setValue('iconSpacing', parseInt(sliders.iconSpacing.value));
+            GM_setValue('iconMargin', parseInt(sliders.iconMargin.value));
             GM_setValue('iconRadius', parseFloat(sliders.iconRadius.value));
             GM_setValue('topMargin', parseInt(sliders.topMargin.value));
             GM_setValue('fitToScreenWidth', fitToScreenWidthCheckbox.checked);
